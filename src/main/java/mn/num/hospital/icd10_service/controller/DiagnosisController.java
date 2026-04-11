@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.*;
 @Slf4j
 public class DiagnosisController {
 
-    private static final int DEFAULT_LIMIT = 5;
+    private static final int DEFAULT_LIMIT = 10;
 
     private final DiagnosisService diagnosisService;
 

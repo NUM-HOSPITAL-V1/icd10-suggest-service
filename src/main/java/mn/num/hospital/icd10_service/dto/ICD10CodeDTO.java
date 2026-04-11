@@ -11,7 +11,22 @@ public class ICD10CodeDTO {
     private String code;
     private String name;
     private String detail;
-    private String category;
-    private Double relevanceScore;
+    
+    // Chapter
+    private String chapterCode; // "I", "II"
+    private String chapterName;
+    
+    // Category
+    private String categoryRange;
+    private String categoryName;
+    
+    // Subcategory
+    private String subcategoryCode; // "A00"
+    private String subcategoryName;
+    
+    private Double relevanceScore = 0.0;
+    
+    public void setRelevanceScore(Double relevanceScore) {
+    	this.relevanceScore = relevanceScore != null ? relevanceScore: 0.0;
+    }
 }
-

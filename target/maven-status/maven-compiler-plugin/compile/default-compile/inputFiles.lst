@@ -1,0 +1,10 @@
+C:\Users\Lenovo\Documents\Diplom\icd10-suggest-service\src\main\java\mn\num\hospital\icd10_service\controller\DiagnosisController.java
+C:\Users\Lenovo\Documents\Diplom\icd10-suggest-service\src\main\java\mn\num\hospital\icd10_service\service\DiagnosisService.java
+C:\Users\Lenovo\Documents\Diplom\icd10-suggest-service\src\main\java\mn\num\hospital\icd10_service\dto\DiagnosisRequest.java
+C:\Users\Lenovo\Documents\Diplom\icd10-suggest-service\src\main\java\mn\num\hospital\icd10_service\dto\DiagnosisResponse.java
+C:\Users\Lenovo\Documents\Diplom\icd10-suggest-service\src\main\java\mn\num\hospital\icd10_service\dto\ICD10CodeDTO.java
+C:\Users\Lenovo\Documents\Diplom\icd10-suggest-service\src\main\java\mn\num\hospital\icd10_service\repo\ICD10CodeRepository.java
+C:\Users\Lenovo\Documents\Diplom\icd10-suggest-service\src\main\java\mn\num\hospital\icd10_service\domain\ICD10Code.java
+C:\Users\Lenovo\Documents\Diplom\icd10-suggest-service\src\main\java\mn\num\hospital\icd10_service\ICD10ServiceApplication.java
+C:\Users\Lenovo\Documents\Diplom\icd10-suggest-service\src\main\java\mn\num\hospital\icd10_service\ui\DiagnosisSearchUI.java
+C:\Users\Lenovo\Documents\Diplom\icd10-suggest-service\src\main\java\mn\num\hospital\icd10_service\service\ExternalICD10Service.java
