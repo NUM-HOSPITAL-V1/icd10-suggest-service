@@ -1,24 +1,24 @@
 package mn.num.hospital.icd10_service.repo;
 
+import org.springframework.data.domain.Pageable;
+
+import java.util.List;
+import java.util.Optional;
+
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import mn.num.hospital.icd10_service.domain.Category;
 import mn.num.hospital.icd10_service.domain.ICD10Code;
-import mn.num.hospital.icd10_service.domain.Subcategory;
 import mn.num.hospital.icd10_service.dto.ChapterDto;
-
-import org.springframework.data.domain.Pageable;
-import java.util.List;
-import java.util.Optional;
 
 @Repository
 public interface ICD10CodeRepository extends JpaRepository<ICD10Code, Long> {
 
-	// 1. Code-оор хайх
     Optional<ICD10Code> findByCode(String code);
+
+    Optional<ICD10Code> findFirstByCodeIgnoreCase(String code);
 
     // 2. Keyword search (name + detail)
     @Query("SELECT i FROM ICD10Code i WHERE " +
@@ -32,8 +32,18 @@ public interface ICD10CodeRepository extends JpaRepository<ICD10Code, Long> {
            "LOWER(i.name) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
            "ORDER BY COALESCE(i.relevanceScore, 0) DESC")
     List<ICD10Code> findByKeywordWithLimit(@Param("keyword") String keyword,
-                                           Pageable pageable);  
-    // Бүх chapter-уудыг авах
+                                           Pageable pageable);
+
+    @Query("""
+            SELECT i
+            FROM ICD10Code i
+            WHERE LOWER(i.code) LIKE LOWER(CONCAT('%', :keyword, '%'))
+               OR LOWER(i.name) LIKE LOWER(CONCAT('%', :keyword, '%'))
+               OR LOWER(COALESCE(i.detail, '')) LIKE LOWER(CONCAT('%', :keyword, '%'))
+            ORDER BY i.code ASC
+            """)
+    List<ICD10Code> findSearchCandidates(@Param("keyword") String keyword, Pageable pageable);
+
     @Query("""
     	    SELECT DISTINCT new mn.num.hospital.icd10_service.dto.ChapterDto(
     	        ch.chapter, ch.name, ch.orderIndex

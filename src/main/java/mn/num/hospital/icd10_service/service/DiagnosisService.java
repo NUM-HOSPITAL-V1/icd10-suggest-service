@@ -11,10 +11,6 @@ import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import org.springframework.stereotype.Service;
-
-import jakarta.annotation.PostConstruct;
-import lombok.extern.slf4j.Slf4j;
 import mn.num.hospital.icd10_service.domain.Category;
 import mn.num.hospital.icd10_service.domain.Chapter;
 import mn.num.hospital.icd10_service.domain.ICD10Code;
@@ -27,8 +23,7 @@ import mn.num.hospital.icd10_service.repo.ChapterRepository;
 import mn.num.hospital.icd10_service.repo.ICD10CodeRepository;
 import mn.num.hospital.icd10_service.repo.SubcategoryRepository;
 
-@Service
-@Slf4j
+@Deprecated(forRemoval = false)
 public class DiagnosisService {
 
     private final ExternalICD10Service externalService;
@@ -49,13 +44,6 @@ public class DiagnosisService {
 		this.subcategoryRepo = subcategoryRepo;
     }
 	
-	@PostConstruct
-	public void init() {
-		if(icd10Repo.count() == 0) {
-			seedFromExternalAPI();
-		}
-	}
-
 	public List<String> getChapters() {
 	    return chapterRepo.findAll()
 	            .stream()
@@ -76,7 +64,6 @@ public class DiagnosisService {
     
     // API-с бүх кодыг DB-д нэг удаа татаж хадгалах
     public String seedFromExternalAPI() {
-        log.info("DB seed эхэллээ...");
         List<ICD10CodeDTO> allCodes = externalService.fetchAllCodes();
 
         if (allCodes.isEmpty()) {
@@ -94,7 +81,6 @@ public class DiagnosisService {
         }
 
         String msg = String.format("Seed дууслаа: %d хадгалсан, %d давхардсан орхисон", saved, skipped);
-        log.info(msg);
         return msg;
     }
 
@@ -109,8 +95,6 @@ public class DiagnosisService {
         }
 
         try {
-            log.info("Хайлт эхэллээ: '{}'", diagnosis);
-
             CompletableFuture<List<ICD10CodeDTO>> localFuture =
                     CompletableFuture.supplyAsync(() -> getLocalResults(diagnosis, limit));
 
@@ -125,7 +109,6 @@ public class DiagnosisService {
                             try {
                                 saveExternalResults(external);
                             } catch (Exception e) {
-                                log.error("Гадаад үр дүн хадгалахад алдаа: {}", e.getMessage());
                             }
                         });
                         return Stream.concat(local.stream(), external.stream())
@@ -149,10 +132,8 @@ public class DiagnosisService {
             response.setMessage(suggestions.size() + " код санал болгосон");
 
         } catch (TimeoutException e) {
-            log.error("Хайлт timeout боллоо", e);
             return buildErrorResponse(response, "Хайлт хэтэрхий удаан байна", startTime);
         } catch (Exception e) {
-            log.error("Алдаа:", e);
             return buildErrorResponse(response, "Алдаа гарлаа", startTime);
         }
 
@@ -161,9 +142,6 @@ public class DiagnosisService {
     }
 
     private List<ICD10CodeDTO> getLocalResults(String diagnosis, int limit) {
-
-        log.debug("Local DB query...");
-
         return icd10Repo.findByKeywordWithLimit(
                 diagnosis,
                 org.springframework.data.domain.PageRequest.of(0, limit)
@@ -178,7 +156,6 @@ public class DiagnosisService {
             if (icd10Repo.findByCode(dto.getCode()).isEmpty()) {
                 ICD10Code entity = convertToEntity(dto);
                 icd10Repo.save(entity);
-                log.debug("Saved: {} - {}", entity.getCode(), entity.getName());
             }
         }
     }

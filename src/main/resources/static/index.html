@@ -1,241 +1,134 @@
 <!DOCTYPE html>
-<html lang="mn">
+<html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>Онош хайх</title>
-
-<style>
-body {
-    font-family: Arial, sans-serif;
-    background: #f5f5f5;
-}
-
-/* Modal */
-.modal {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.4);
-}
-
-.modal-content {
-    width: 800px;
-    background: white;
-    border-radius: 10px;
-    padding: 20px;
-    display: flex;
-    gap: 20px;
-}
-
-.left, .right {
-    flex: 1;
-}
-
-input {
-    width: 100%;
-    padding: 8px;
-    margin: 8px 0;
-    border-radius: 5px;
-    border: 1px solid #ccc;
-}
-
-.list {
-    max-height: 300px;
-    overflow-y: auto;
-    border-left: 1px solid #eee;
-    padding-left: 10px;
-}
-
-.item {
-    display: flex;
-    justify-content: space-between;
-    padding: 20px;
-    border-bottom: 1px solid #eee;
-    cursor: pointer;
-}
-
-.item:hover{
-	background:#f0f7ff;
-}
-
-.code {
-    background: #ddd;
-    padding: 3px 8px;
-    border-radius: 5px;
-    margin-right: 10px;
-}
-
-.detail {
-    font-size: 12px;
-    color: gray;
-    margin-top: 3px;
-}
-
-.btn {
-    padding: 10px 20px;
-    border: none;
-    background: #007bff;
-    color: white;
-    border-radius: 10px;
-    cursor: pointer;
-}
-
-.footer {
-    margin-top: 10px;
-    text-align: right;
-}
-
-.loading {
-    text-align: center;
-    font-size: 13px;
-    color: gray;
-}
-</style>
-</head>
-
-<body>
-
-<div class="modal">
-<div class="modal-content">
-
-    <!-- LEFT -->
-    <div class="left">
-        <h3>Онош хайх</h3>
-
-        <!-- Keyword input -->
-        <input id="searchInput" type="text" placeholder="Оноштой холбоотой түлхүүр үг бичнэ үү...">
-
-        <!-- Result limit input -->
-        <input id="limitInput" type="number" value="5" min="1" max="50">
-
-        <p style="font-size:12px; color:gray;">
-            Жишээ: балнад, ижбалнад, урвах
-        </p>
-        
-        <button class="btn" onclick="search()">Хайх</button>
-    </div>
-
-    <!-- RIGHT -->
-    <div class="right">
-        <h3>Хайлтын илэрц: <span id="count">0</span></h3>
-
-        <!-- Result list -->
-        <div id="results" class="list"></div>
-
-        <!-- Loading -->
-        <div id="loading" class="loading" style="display:none;">
-            Хайж байна...
-        </div>
-
-        <div class="footer">
-            <button class="btn" style="background:gray;" onclick="closeModal()">Болих</button>
-        </div>
-    </div>
-
-</div>
-</div>
-
-<script>
-//config
-const API = window.location.origin + "/api";
-
-const input = document.getElementById("searchInput");
-const limitInput = document.getElementById("limitInput");
-const resultsBox = document.getElementById("results");
-const count = document.getElementById("count");
-const loading = document.getElementById("loading");
-
-function escapeHTML(str) {
-    return str.replace(/[&<>"']/g, tag => ({
-        '&': '&amp;',
-        '<': '&lt;',
-        '>': '&gt;',
-        '"': '&quot;',
-        "'": '&#39;'
-    }[tag]));
-}
-
-async function search() {
-    const query = input.value.trim();
-    const limit = parseInt(limitInput.value) || 10;
-
-    // Хоосон бол reset
-    if (!query) {
-        resultsBox.innerHTML = "";
-        count.textContent = 0;
-        return;
-    }
-
-    // Limit validation
-    if (limit < 1 || limit > 50) {
-        alert("Limit 1-50 хооронд байна");
-        return;
-    }
-
-    loading.style.display = "block";
-    resultsBox.innerHTML = "";
-
-    try {
-        const res = await fetch(API + "/diagnosis/suggest", {
-            method: "POST",
-            headers: {"Content-Type":"application/json"},
-            body: JSON.stringify({
-                diagnosis: query,
-                resultLimit: limit
-            })
-        });
-
-        const data = await res.json();
-
-        // Илэрц байхгүй
-        if (!data.suggestions || data.suggestions.length === 0) {
-            resultsBox.innerHTML = "<p>Илэрц олдсонгүй</p>";
-            count.textContent = 0;
-            return;
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ICD-10 Lookup API</title>
+    <style>
+        :root {
+            --bg: #f5f1e8;
+            --panel: #fffaf0;
+            --text: #1c1a16;
+            --muted: #5e584d;
+            --accent: #146c78;
+            --border: #d9cdb6;
         }
 
-        // Count update
-        count.textContent = data.suggestions.length;
+        * {
+            box-sizing: border-box;
+        }
 
-	// render results
-        resultsBox.innerHTML = data.suggestions.map(c => `
-            <div class="item" onclick="select('${c.code}', '${c.name}')">
-                <div>
-                    <span class="code">${escapeHTML(c.code)}</span>
-                    ${escapeHTML(c.name)}
+        body {
+            margin: 0;
+            font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+            background:
+                radial-gradient(circle at top left, rgba(20, 108, 120, 0.15), transparent 30%),
+                linear-gradient(180deg, #f8f4eb 0%, var(--bg) 100%);
+            color: var(--text);
+        }
 
-                    <!-- DETAIL (optional) -->
-                    ${c.detail ? `<div class="detail">${escapeHTML(c.detail)}</div>` : ""}
-                </div>
-            </div>
-        `).join("");
+        main {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 48px 20px 64px;
+        }
 
-    } catch (err) {
-        resultsBox.innerHTML = "Алдаа гарлаа";
-    } finally {
-        loading.style.display = "none";
+        .hero,
+        .panel {
+            background: rgba(255, 250, 240, 0.92);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            box-shadow: 0 18px 40px rgba(28, 26, 22, 0.08);
+        }
+
+        .hero {
+            padding: 32px;
+            margin-bottom: 24px;
+        }
+
+        .panel {
+            padding: 24px;
+            margin-bottom: 16px;
+        }
+
+        h1,
+        h2 {
+            margin-top: 0;
+            font-family: "IBM Plex Serif", Georgia, serif;
+        }
+
+        p,
+        li {
+            line-height: 1.6;
+            color: var(--muted);
+        }
+
+        code,
+        pre {
+            font-family: "IBM Plex Mono", "SFMono-Regular", monospace;
+        }
+
+        pre {
+            margin: 0;
+            padding: 16px;
+            overflow-x: auto;
+            background: #201c17;
+            color: #f6efde;
+            border-radius: 14px;
+        }
+
+        ul {
+            padding-left: 20px;
+            margin-bottom: 0;
+        }
+
+        .endpoint {
+            color: var(--accent);
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+<main>
+    <section class="hero">
+        <h1>ICD-10 Lookup API</h1>
+        <p>This service now runs as a backend-only ICD-10 lookup API for examination workflows. Use the endpoints below from your hospital backend or frontend integration layer.</p>
+    </section>
+
+    <section class="panel">
+        <h2>Core Endpoints</h2>
+        <ul>
+            <li><span class="endpoint">GET /api/diagnosis/search?q=J18&amp;limit=10</span> returns ranked ICD-10 suggestions.</li>
+            <li><span class="endpoint">GET /api/diagnosis/code/J18.9</span> resolves a canonical ICD-10 record by code.</li>
+            <li><span class="endpoint">GET /api/actuator/health/readiness</span> reports readiness, DB state, and ICD dataset availability.</li>
+        </ul>
+    </section>
+
+    <section class="panel">
+        <h2>Example Search Response</h2>
+        <pre>{
+  "success": true,
+  "data": [
+    {
+      "id": "icd10:J18.9",
+      "code": "J18.9",
+      "name": "Pneumonia, unspecified organism",
+      "detail": "Unspecified pneumonia",
+      "chapterCode": "X",
+      "chapterName": "Diseases of the respiratory system",
+      "categoryCode": "J18",
+      "categoryName": "Pneumonia, organism unspecified",
+      "score": 1.0,
+      "source": "icd10"
     }
-}
-
-function select(code, name) {
-    document.querySelectorAll(".item").forEach(i => i.style.background = "");
-    event.currentTarget.style.background = "#d0e7ff";
-
-    alert(`Сонгосон: ${code} - ${name}`);
- 	// TODO:
-    // эндээс parent form руу дамжуулж болно
-}
-
-input.addEventListener("keydown", e => {
-    if (e.key === "Enter") search();
-});  
-
-function closeModal() {
-    document.querySelector(".modal").style.display = "none";
-}
-</script>
-
+  ],
+  "meta": {
+    "query": "J18",
+    "limit": 10,
+    "count": 1
+  }
+}</pre>
+    </section>
+</main>
 </body>
 </html>

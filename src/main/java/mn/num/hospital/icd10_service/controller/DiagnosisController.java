@@ -1,13 +1,24 @@
 package mn.num.hospital.icd10_service.controller;
 
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import mn.num.hospital.icd10_service.dto.DiagnosisRequest;
-import mn.num.hospital.icd10_service.dto.DiagnosisResponse;
-import mn.num.hospital.icd10_service.service.DiagnosisService;
+import java.util.List;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import mn.num.hospital.icd10_service.dto.ApiError;
+import mn.num.hospital.icd10_service.dto.ApiResponse;
+import mn.num.hospital.icd10_service.dto.DiagnosisSearchMeta;
+import mn.num.hospital.icd10_service.dto.DiagnosisSearchResult;
+import mn.num.hospital.icd10_service.service.Icd10SearchService;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @RestController
 @RequestMapping("/diagnosis")
@@ -16,79 +27,39 @@ import org.springframework.web.bind.annotation.*;
 @Slf4j
 public class DiagnosisController {
 
-    private static final int DEFAULT_LIMIT = 10;
+    private final Icd10SearchService icd10SearchService;
 
-    private final DiagnosisService diagnosisService;
+    @GetMapping("/search")
+    public ResponseEntity<ApiResponse<List<DiagnosisSearchResult>>> search(
+            @RequestParam(name = "q", required = false) String query,
+            @RequestParam(name = "limit", required = false) Integer limit) {
 
-    /**
-     * ICD-10 код санал болгох
-     * POST /diagnosis/suggest
-     */
-    @PostMapping("/suggest")
-    public ResponseEntity<DiagnosisResponse> suggestCodes(
-            @RequestBody DiagnosisRequest request) {
+        String normalizedQuery = icd10SearchService.normalizeTextQuery(query);
+        int safeLimit = icd10SearchService.sanitizeLimit(limit);
 
-        String diagnosis = request.getDiagnosis();
-        int limit = resolveLimit(request.getResultLimit());
+        if (!icd10SearchService.isSearchable(normalizedQuery)) {
+            DiagnosisSearchMeta meta = new DiagnosisSearchMeta(normalizedQuery, safeLimit, 0);
+            return ResponseEntity.ok(ApiResponse.success(List.of(), meta));
+        }
 
-        log.info("Diagnosis suggest request: diagnosis='{}', limit={}",
-                diagnosis, limit);
-
-        DiagnosisResponse response =
-                diagnosisService.suggestCodes(diagnosis, limit);
-
-        return buildResponse(response);
+        log.info("Diagnosis search request: query='{}', limit={}", normalizedQuery, safeLimit);
+        List<DiagnosisSearchResult> results = icd10SearchService.search(normalizedQuery, safeLimit);
+        DiagnosisSearchMeta meta = new DiagnosisSearchMeta(normalizedQuery, safeLimit, results.size());
+        return ResponseEntity.ok(ApiResponse.success(results, meta));
     }
 
-    /**
-     * Service health check
-     * GET /diagnosis/health
-     */
+    @GetMapping("/code/{code}")
+    public ResponseEntity<ApiResponse<DiagnosisSearchResult>> findByCode(@PathVariable String code) {
+        return icd10SearchService.findByCode(code)
+                .map(result -> ResponseEntity.ok(ApiResponse.success(result)))
+                .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(ApiResponse.error(
+                                "Diagnosis code not found",
+                                List.of(new ApiError("code", "No ICD-10 diagnosis found for the provided code")))));
+    }
+
     @GetMapping("/health")
-    public ResponseEntity<String> health() {
-        return ResponseEntity.ok("ICD-10 Service is running ✓");
-    }
-
-    /**
-     * Sample data initialize
-     * POST /diagnosis/init
-     */
-    @PostMapping("/init")
-    public ResponseEntity<String> initData() {
-
-        try {
-            log.info("Sample data initialized");
-
-            return ResponseEntity.ok("Sample data created successfully");
-
-        } catch (Exception e) {
-
-            log.error("Sample data initialization failed", e);
-
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Initialization error: " + e.getMessage());
-        }
-    }
-
-    /**
-     * Limit validation
-     */
-    private int resolveLimit(int requestedLimit) {
-        return requestedLimit > 0 ? requestedLimit : DEFAULT_LIMIT;
-    }
-
-    /**
-     * API response builder
-     */
-    private ResponseEntity<DiagnosisResponse> buildResponse(
-            DiagnosisResponse response) {
-
-        if (response.isSuccess()) {
-            return ResponseEntity.ok(response);
-        }
-
-        return ResponseEntity
-                .status(HttpStatus.BAD_REQUEST)
-                .body(response);
+    public ResponseEntity<ApiResponse<String>> health() {
+        return ResponseEntity.ok(ApiResponse.success("ICD-10 lookup service is running"));
     }
 }
