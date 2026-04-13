@@ -1,0 +1,69 @@
+name: Build & Push Docker Image
+run-name: "Build Image | ${{ github.ref_name }} | ${{ github.sha }}"
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    environment: production
+
+    outputs:
+      image_tag: ${{ steps.meta.outputs.image_tag }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set image tag
+        id: meta
+        run: |
+          if ! echo "${GITHUB_REF_NAME}" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "Invalid release tag: ${GITHUB_REF_NAME}. Expected format: v1.2.3"
+            exit 1
+          fi
+          echo "image_tag=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+
+      - name: Login Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build & push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ secrets.DOCKER_USERNAME }}/icd10-suggest-service:${{ steps.meta.outputs.image_tag }}
+
+      - name: Trigger deploy repository
+        env:
+          DEPLOY_REPO_TOKEN: ${{ secrets.DEPLOY_REPO_TOKEN }}
+          DEPLOY_REPO_OWNER: ${{ secrets.DEPLOY_REPO_OWNER }}
+          DEPLOY_REPO_NAME: ${{ secrets.DEPLOY_REPO_NAME }}
+          IMAGE_TAG: ${{ steps.meta.outputs.image_tag }}
+          IMAGE_REPO: ${{ secrets.DOCKER_USERNAME }}/icd10-suggest-service
+        run: |
+          set -euo pipefail
+
+          if [ -z "${DEPLOY_REPO_TOKEN}" ] || [ -z "${DEPLOY_REPO_OWNER}" ] || [ -z "${DEPLOY_REPO_NAME}" ]; then
+            echo "DEPLOY_REPO_TOKEN, DEPLOY_REPO_OWNER, DEPLOY_REPO_NAME secrets must be set."
+            exit 1
+          fi
+
+          curl -fsSL -X POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${DEPLOY_REPO_TOKEN}" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${DEPLOY_REPO_OWNER}/${DEPLOY_REPO_NAME}/dispatches" \
+            -d "{
+              \"event_type\":\"icd10_suggest_image_built\",
+              \"client_payload\":{
+                \"image_tag\":\"${IMAGE_TAG}\",
+                \"image_repo\":\"${IMAGE_REPO}\"
+              }
+            }"
