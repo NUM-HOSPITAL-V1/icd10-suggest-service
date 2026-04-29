@@ -9,7 +9,6 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    environment: production
 
     outputs:
       image_tag: ${{ steps.meta.outputs.image_tag }}
